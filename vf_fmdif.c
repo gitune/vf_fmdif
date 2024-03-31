@@ -1,7 +1,14 @@
 /*
+ * vf_fmdif is based on vf_yadif and vf_fieldmatch.
+ *
+ * vf_yadif:
  * Copyright (C) 2006-2011 Michael Niedermayer <michaelni@gmx.at>
  *               2010      James Darnley <james.darnley@gmail.com>
-
+ *
+ * vf_fieldmatch:
+ * Copyright (c) 2012 Fredrik Mellbin
+ * Copyright (c) 2013 Clément Bœsch 
+ *
  * This file is part of FFmpeg.
  *
  * FFmpeg is free software; you can redistribute it and/or
