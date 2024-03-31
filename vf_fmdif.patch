@@ -22,12 +22,19 @@ diff -Nru ffmpeg-6.1.1/libavfilter/allfilters.c ffmpeg-6.1.1.mod/libavfilter/all
  extern const AVFilter ff_vf_framepack;
 diff -Nru ffmpeg-6.1.1/libavfilter/vf_fmdif.c ffmpeg-6.1.1.mod/libavfilter/vf_fmdif.c
 --- ffmpeg-6.1.1/libavfilter/vf_fmdif.c	1970-01-01 09:00:00.000000000 +0900
-+++ ffmpeg-6.1.1.mod/libavfilter/vf_fmdif.c	2024-03-31 15:21:19.351531848 +0900
-@@ -0,0 +1,732 @@
++++ ffmpeg-6.1.1.mod/libavfilter/vf_fmdif.c	2024-03-31 19:25:53.061890208 +0900
+@@ -0,0 +1,739 @@
 +/*
++ * vf_fmdif is based on vf_yadif and vf_fieldmatch.
++ *
++ * vf_yadif:
 + * Copyright (C) 2006-2011 Michael Niedermayer <michaelni@gmx.at>
 + *               2010      James Darnley <james.darnley@gmail.com>
-+
++ *
++ * vf_fieldmatch:
++ * Copyright (c) 2012 Fredrik Mellbin
++ * Copyright (c) 2013 Clément Bœsch 
++ *
 + * This file is part of FFmpeg.
 + *
 + * FFmpeg is free software; you can redistribute it and/or
