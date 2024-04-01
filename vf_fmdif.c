@@ -521,34 +521,27 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     FMDIFContext *fm = ctx->priv;
     YADIFContext *yadif = &fm->yadif;
     int combs[] = { -1, -1, -1 };
-    AVFrame *gen_frames[] = { NULL, NULL, NULL };
+    AVFrame *gen_frame;
     ThreadData td = { .frame = dstpic, .parity = parity, .tff = tff };
-    int i, ret = 0, match = -1;
+    int i, match = -1;
     int fnum = parity ^ !tff;
 
     /* calc combed scores */
-    for (i = fnum; i < fnum + 2; i++) {
-        gen_frames[i] = create_weave_frame(ctx, i, tff, yadif->prev, yadif->cur, yadif->next);
-        if (!gen_frames[i]) {
-            ret = AVERROR(ENOMEM);
-            break;
-        }
-        combs[i] = calc_combed_score(fm, gen_frames[i]);
-    }
-    if (ret < 0)
-        av_log(ctx, AV_LOG_WARNING, "Cannot create weave frame. skipped to match fields\n");
-    else {
-        for (i = fnum; i < fnum + 2; i++)
-            if (combs[i] < fm->combpel) {
-                match = i;
-                break;
+    if ((combs[mC] = calc_combed_score(fm, yadif->cur)) < fm->combpel) {
+        match = mC; /* current frame is priority */
+        av_frame_copy(dstpic, yadif->cur);
+    } else {
+        gen_frame = create_weave_frame(ctx, fnum * 2, tff, yadif->prev, yadif->cur, yadif->next);
+        if (gen_frame) {
+            if ((combs[fnum * 2] = calc_combed_score(fm, gen_frame)) < fm->combpel) {
+                match = fnum * 2; /* mP or mN */
+                av_frame_copy(dstpic, gen_frame);
             }
-        if (match >= 0)
-            av_frame_copy(dstpic, gen_frames[match]);
-        av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
+            av_frame_free(&gen_frame);
+        } else
+            av_log(ctx, AV_LOG_WARNING, "Cannot create weave frame. skipped to match fields\n");
     }
-    for (i = 0; i < FF_ARRAY_ELEMS(gen_frames); i++)
-        av_frame_free(&gen_frames[i]);
+    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
     if (match >= 0) /* found matched field */
         return;
 
