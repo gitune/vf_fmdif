@@ -716,7 +716,7 @@ diff -Nru ffmpeg-6.1.1/libavfilter/vf_fmdif.c ffmpeg-6.1.1.mod/libavfilter/vf_fm
 +    CONST("all",        "deinterlace all frames",                       YADIF_DEINT_ALL,         "deint"),
 +    CONST("interlaced", "only deinterlace frames marked as interlaced", YADIF_DEINT_INTERLACED,  "deint"),
 +
-+    { "cthresh", "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF(cthresh), AV_OPT_TYPE_INT, {.i64= 9}, -1, 0xff, FLAGS },
++    { "cthresh", "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF(cthresh), AV_OPT_TYPE_INT, {.i64=10}, -1, 0xff, FLAGS },
 +    { "chroma",  "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF(chroma),  AV_OPT_TYPE_BOOL,{.i64= 1},  0,    1, FLAGS },
 +    { "blockx",  "set the x-axis size of the window used during combed frame detection", OFFSET_FMDIF(blockx),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
 +    { "blocky",  "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF(blocky),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
