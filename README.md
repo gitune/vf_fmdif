@@ -14,9 +14,9 @@ ffmpeg用のdeinterlace用visual filterです。最も有名なdeinterlacerと�
 
 1. 今のframe(mC)、今のframeの最初のfieldと前のframeの後のfieldを組み合わせたframe(mP)、今のframeの後のfieldと次のframeの最初のfieldを組み合わせたframe(mN)に注目し、frame内の1つ目のfieldの処理時はmPとmC、2つ目のfieldの処理時はmCとｍNを用いる
 2. もし前のcycleの同じ組み合わせのframeに櫛がなければそのまま採用
-   * 前のcycleがない、または前のcycleでfield match出来なかった時は今のframe(mC)を採用
+   * 前のcycleがない、または前のcycleでfield match出来なかった時は今のframe(mC)を使う
 2. もし2.のframeに櫛があれば、もう一つの組み合わせのframeで櫛検出を行う
-3. そちらのframeに櫛がなければ採用、櫛があれば通常通りdeinterlace処理を実施
+3. そちらのframeに櫛がなければ採用、そちらにも櫛があれば通常通りdeinterlace処理を実施
 
 cycle(defaultは5フレーム)毎にmP/mC/mNどの組み合わせを使ったかを覚えておき、同じtiming(cycle内の位置)では同じ組み合わせを使うことでリズムを保とうとするlogicを追加しています。
 
