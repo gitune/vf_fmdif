@@ -43,7 +43,7 @@ typedef struct FMDIFContext {
     int hsub[1], vsub[1];           ///< chroma subsampling values
     int bpc;                        ///< bytes per component
     int *last_match;                ///< last values of match
-    int fid;                        ///< current field id
+    int fid;                        ///< current frame id
 
     /* options */
     int cthresh;
@@ -532,7 +532,7 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     int fnum = parity ^ !tff;
 
     /* the last matched frame is priority */
-    switch (fm->last_match[fm->fid]) {
+    switch (fm->last_match[fm->fid + (fm->cycle * fnum)]) {
     case mP:
     case mN:
         p1 = fnum * 2;
@@ -570,9 +570,10 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
 
     // keep the last match value in cycle
-    fm->last_match[fm->fid] = match;
-    if (++fm->fid == fm->cycle * 2)
-        fm->fid = 0;
+    fm->last_match[fm->fid + (fm->cycle * fnum)] = match;
+    if (!fnum)
+        if (++fm->fid >= fm->cycle)
+            fm->fid = 0;
 
     if (match >= 0) /* found matched field */
         return;
@@ -662,6 +663,7 @@ static int config_output(AVFilterLink *outlink)
     int i, ret;
 
     fmdif->bpc          = (desc->comp[0].depth + 7) / 8;
+    fmdif->fid          = 0;
     fmdif->last_match   = av_malloc_array(fmdif->cycle * 2, sizeof(int));
     for (i = 0; i < fmdif->cycle * 2; i++)
         fmdif->last_match[i] = -1;
