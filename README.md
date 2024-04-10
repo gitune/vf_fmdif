@@ -12,13 +12,17 @@ ffmpeg用のdeinterlace用visual filterです。最も有名なdeinterlacerと�
 
 櫛検出の前にfield set(weave frame)を作る時はoriginalのfieldmatch filterとは少し異なり、次のようなlogicとしています。
 
-1. もし現在のframeに櫛がなければそのまま採用
-2. もし現在のframeに櫛があれば、1つ目のfieldであれば前の、2つ目のfieldであれば後のframeから自分と逆側のfieldを取り出して合成し櫛検出を行う
-3. 合成後のframeに櫛がなければ採用、櫛があれば通常通りdeinterlace処理を実施
+1. 今のframe(mC)、今のframeの最初のfieldと前のframeの後のfieldを組み合わせたframe(mP)、今のframeの後のfieldと次のframeの最初のfieldを組み合わせたframe(mN)に注目し、frame内の1つ目のfieldの処理時はmPとmC、2つ目のfieldの処理時はmCとｍNを用いる
+2. もし前のcycleの同じ組み合わせのframeに櫛がなければそのまま採用
+   * 前のcycleがない、または前のcycleでfield match出来なかった時は今のframe(mC)を採用
+2. もし2.のframeに櫛があれば、もう一つの組み合わせのframeで櫛検出を行う
+3. そちらのframeに櫛がなければ採用、櫛があれば通常通りdeinterlace処理を実施
+
+cycle(defaultは5フレーム)毎にmP/mC/mNどの組み合わせを使ったかを覚えておき、同じtiming(cycle内の位置)では同じ組み合わせを使うことでリズムを保とうとするlogicを追加しています。
 
 ## オプション
 
-利用出来るオプションはyadifのそれとfieldmatchの櫛検出用の一部(cthresh, chroma, blockx, blocky, combpel)です。default値もほとんど同じですが、cthreshとchromaのみdefaultをそれぞれ10と1に変更しています。
+利用出来るオプションはyadifのそれとfieldmatchの櫛検出用の一部(cthresh, chroma, blockx, blocky, combpel)です。default値もほとんど同じですが、cthreshとchromaのみdefaultをそれぞれ10と1に変更しています。また、リズムを保ちたいフレーム数を指定するcycle(defaultは5フレーム)も指定可能です。
 
 ## 使い方
 
