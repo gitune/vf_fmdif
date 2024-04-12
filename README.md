@@ -1,4 +1,4 @@
-# vf_fmdif (Field Match De-interlace Filter)
+# vf_fmdif (Field Match Deinterlacing Filter)
 
 # これは何？
 
