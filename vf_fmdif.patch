@@ -757,8 +757,8 @@ diff -Nru ffmpeg-6.1.1/libavfilter/vf_fmdif.c ffmpeg-6.1.1.mod/libavfilter/vf_fm
 +    { "cthresh", "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF(cthresh), AV_OPT_TYPE_INT, {.i64=10}, -1, 0xff, FLAGS },
 +    { "chroma",  "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF(chroma),  AV_OPT_TYPE_BOOL,{.i64= 1},  0,    1, FLAGS },
 +    { "blockx",  "set the x-axis size of the window used during combed frame detection", OFFSET_FMDIF(blockx),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
-+    { "blocky",  "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF(blocky),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
-+    { "combpel", "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF(combpel), AV_OPT_TYPE_INT, {.i64=80}, 0, INT_MAX, FLAGS },
++    { "blocky",  "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF(blocky),  AV_OPT_TYPE_INT, {.i64=32},  4, 1<<9, FLAGS },
++    { "combpel", "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF(combpel), AV_OPT_TYPE_INT, {.i64=160}, 0, INT_MAX, FLAGS },
 +
 +    { "cycle",   "Set the number of frames you want to keep the rhythm", OFFSET_FMDIF(cycle), AV_OPT_TYPE_INT, {.i64 = 5}, 2, 25, FLAGS },
 +
