@@ -1,7 +1,6 @@
-From dc28a59792789e808c763b8e453b199a20771f4a Mon Sep 17 00:00:00 2001
-Date: Mon, 22 Apr 2024 13:40:10 +0900
-Subject: [PATCH] avfilter: add fmdif filter.
-
+From fbe85a7bdcc99b1cae6a48e39d9eb253b96b2ee1 Mon Sep 17 00:00:00 2001
+Date: Fri, 3 May 2024 20:16:56 +0900
+Subject: [PATCH] avfilter: add vf_fmdif.
 
 ---
  Changelog                         |   1 +
@@ -197,7 +196,7 @@ index 408c700767..7e0eb9af97 100644
  #define LIBAVFILTER_VERSION_INT AV_VERSION_INT(LIBAVFILTER_VERSION_MAJOR, \
 diff --git a/libavfilter/vf_fmdif.c b/libavfilter/vf_fmdif.c
 new file mode 100644
-index 0000000000..ff1789f68e
+index 0000000000..ade54c415e
 --- /dev/null
 +++ b/libavfilter/vf_fmdif.c
 @@ -0,0 +1,757 @@
@@ -774,7 +773,7 @@ index 0000000000..ff1789f68e
 +        av_frame_free(&gen_frame);
 +    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
 +
-+    // keep the last match value in cycle
++    /* keep the last match value in cycle */
 +    fm->last_match[fm->fid + (fm->cycle * fnum)] = match;
 +    if (!fnum)
 +        if (++fm->fid >= fm->cycle)

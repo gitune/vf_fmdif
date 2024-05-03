@@ -571,7 +571,7 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
         av_frame_free(&gen_frame);
     av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
 
-    // keep the last match value in cycle
+    /* keep the last match value in cycle */
     fm->last_match[fm->fid + (fm->cycle * fnum)] = match;
     if (!fnum)
         if (++fm->fid >= fm->cycle)
