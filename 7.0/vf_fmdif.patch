@@ -1,40 +1,5 @@
-From fbe85a7bdcc99b1cae6a48e39d9eb253b96b2ee1 Mon Sep 17 00:00:00 2001
-Date: Fri, 3 May 2024 20:16:56 +0900
-Subject: [PATCH] avfilter: add vf_fmdif.
-
----
- Changelog                         |   1 +
- doc/filters.texi                  | 111 +++++
- libavfilter/Makefile              |   1 +
- libavfilter/allfilters.c          |   1 +
- libavfilter/version.h             |   4 +-
- libavfilter/vf_fmdif.c            | 757 ++++++++++++++++++++++++++++++
- tests/fate/filter-video.mak       |  10 +
- tests/ref/fate/filter-fmdif-mode0 |  35 ++
- tests/ref/fate/filter-fmdif-mode1 |  64 +++
- tests/ref/fate/filter-fmdif10     |  35 ++
- tests/ref/fate/filter-fmdif16     |  35 ++
- 11 files changed, 1052 insertions(+), 2 deletions(-)
- create mode 100644 libavfilter/vf_fmdif.c
- create mode 100644 tests/ref/fate/filter-fmdif-mode0
- create mode 100644 tests/ref/fate/filter-fmdif-mode1
- create mode 100644 tests/ref/fate/filter-fmdif10
- create mode 100644 tests/ref/fate/filter-fmdif16
-
-diff --git a/Changelog b/Changelog
-index 8db14f02b4..a17b616d64 100644
---- a/Changelog
-+++ b/Changelog
-@@ -7,6 +7,7 @@ version <next>:
- - ffmpeg CLI filtergraph chaining
- - LC3/LC3plus demuxer and muxer
- - pad_vaapi, drawbox_vaapi filters
-+- fmdif filter
- 
- 
- version 7.0:
 diff --git a/doc/filters.texi b/doc/filters.texi
-index fc813f12c1..453704823a 100644
+index 595dc5044f..d745bba075 100644
 --- a/doc/filters.texi
 +++ b/doc/filters.texi
 @@ -14310,6 +14310,117 @@ Set destination #2 component value.
@@ -179,27 +144,12 @@ index c532682fc2..350f7f5645 100644
  extern const AVFilter ff_vf_format;
  extern const AVFilter ff_vf_fps;
  extern const AVFilter ff_vf_framepack;
-diff --git a/libavfilter/version.h b/libavfilter/version.h
-index 408c700767..7e0eb9af97 100644
---- a/libavfilter/version.h
-+++ b/libavfilter/version.h
-@@ -31,8 +31,8 @@
- 
- #include "version_major.h"
- 
--#define LIBAVFILTER_VERSION_MINOR   2
--#define LIBAVFILTER_VERSION_MICRO 101
-+#define LIBAVFILTER_VERSION_MINOR   3
-+#define LIBAVFILTER_VERSION_MICRO 100
- 
- 
- #define LIBAVFILTER_VERSION_INT AV_VERSION_INT(LIBAVFILTER_VERSION_MAJOR, \
 diff --git a/libavfilter/vf_fmdif.c b/libavfilter/vf_fmdif.c
 new file mode 100644
-index 0000000000..ade54c415e
+index 0000000000..8c50b48a28
 --- /dev/null
 +++ b/libavfilter/vf_fmdif.c
-@@ -0,0 +1,757 @@
+@@ -0,0 +1,764 @@
 +/*
 + * Field Match Deinterlacing Filter
 + * Copyright (C) 2024 Tsunehisa Kazawa <digitune+ffmpeg@gmail.com>
@@ -733,36 +683,43 @@ index 0000000000..ade54c415e
 +    AVFrame *p2_frame;
 +    ThreadData td = { .frame = dstpic, .parity = parity, .tff = tff };
 +    int i, match = -1, p1, p2;
-+    int fnum = parity ^ !tff;
++    int is_second = parity ^ !tff;
 +
 +    /* the last matched frame is priority */
-+    switch (fm->last_match[fm->fid + (fm->cycle * fnum)]) {
++    switch (fm->last_match[fm->fid + (fm->cycle * is_second)]) {
 +    case mP:
 +    case mN:
-+        p1 = fnum * 2;
++        p1 = is_second ? mN : mP;
 +        p2 = mC;
-+        p1_frame = gen_frame = create_weave_frame(ctx, fnum * 2, tff, yadif->prev, yadif->cur, yadif->next);
++        p1_frame = gen_frame = create_weave_frame(ctx, p1, tff, yadif->prev, yadif->cur, yadif->next);
 +        p2_frame = yadif->cur;
 +        if (gen_frame)
 +            break;
++        /* continue if failing create weave frame */
 +    case mC:
 +    default:
 +        p1 = mC;
-+        p2 = fnum * 2;
++        p2 = is_second ? mN : mP;
 +        p1_frame = yadif->cur;
 +        p2_frame = NULL;
 +        break;
 +    }
 +
 +    /* calc combed scores */
-+    if ((combs[p1] = calc_combed_score(fm, p1_frame)) < fm->combpel) {
++    combs[p1] = calc_combed_score(fm, p1_frame);
++    if (combs[p1] < fm->combpel && fm->last_match[fm->fid + (fm->cycle * is_second)] >= 0) {
 +        match = p1;
 +        av_frame_copy(dstpic, p1_frame);
 +    } else {
 +        if (!p2_frame)
-+            p2_frame = gen_frame = create_weave_frame(ctx, fnum * 2, tff, yadif->prev, yadif->cur, yadif->next);
++            p2_frame = gen_frame = create_weave_frame(ctx, p2, tff, yadif->prev, yadif->cur, yadif->next);
 +        if (p2_frame) {
-+            if ((combs[p2] = calc_combed_score(fm, p2_frame)) < fm->combpel) {
++            combs[p2] = calc_combed_score(fm, p2_frame);
++            /* if both are no comb, lower is better */
++            if (combs[p1] < fm->combpel && combs[p1] < combs[p2]) {
++                match = p1;
++                av_frame_copy(dstpic, p1_frame);
++            } else if (combs[p2] < fm->combpel) {
 +                match = p2;
 +                av_frame_copy(dstpic, p2_frame);
 +            }
@@ -771,11 +728,11 @@ index 0000000000..ade54c415e
 +    }
 +    if (gen_frame)
 +        av_frame_free(&gen_frame);
-+    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
++    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", is_second, combs[0], combs[1], combs[2], match);
 +
 +    /* keep the last match value in cycle */
-+    fm->last_match[fm->fid + (fm->cycle * fnum)] = match;
-+    if (!fnum)
++    fm->last_match[fm->fid + (fm->cycle * is_second)] = match;
++    if (!is_second)
 +        if (++fm->fid >= fm->cycle)
 +            fm->fid = 0;
 +

@@ -531,36 +531,43 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     AVFrame *p2_frame;
     ThreadData td = { .frame = dstpic, .parity = parity, .tff = tff };
     int i, match = -1, p1, p2;
-    int fnum = parity ^ !tff;
+    int is_second = parity ^ !tff;
 
     /* the last matched frame is priority */
-    switch (fm->last_match[fm->fid + (fm->cycle * fnum)]) {
+    switch (fm->last_match[fm->fid + (fm->cycle * is_second)]) {
     case mP:
     case mN:
-        p1 = fnum * 2;
+        p1 = is_second ? mN : mP;
         p2 = mC;
-        p1_frame = gen_frame = create_weave_frame(ctx, fnum * 2, tff, yadif->prev, yadif->cur, yadif->next);
+        p1_frame = gen_frame = create_weave_frame(ctx, p1, tff, yadif->prev, yadif->cur, yadif->next);
         p2_frame = yadif->cur;
         if (gen_frame)
             break;
+        /* continue if failing create weave frame */
     case mC:
     default:
         p1 = mC;
-        p2 = fnum * 2;
+        p2 = is_second ? mN : mP;
         p1_frame = yadif->cur;
         p2_frame = NULL;
         break;
     }
 
     /* calc combed scores */
-    if ((combs[p1] = calc_combed_score(fm, p1_frame)) < fm->combpel) {
+    combs[p1] = calc_combed_score(fm, p1_frame);
+    if (combs[p1] < fm->combpel && fm->last_match[fm->fid + (fm->cycle * is_second)] >= 0) {
         match = p1;
         av_frame_copy(dstpic, p1_frame);
     } else {
         if (!p2_frame)
-            p2_frame = gen_frame = create_weave_frame(ctx, fnum * 2, tff, yadif->prev, yadif->cur, yadif->next);
+            p2_frame = gen_frame = create_weave_frame(ctx, p2, tff, yadif->prev, yadif->cur, yadif->next);
         if (p2_frame) {
-            if ((combs[p2] = calc_combed_score(fm, p2_frame)) < fm->combpel) {
+            combs[p2] = calc_combed_score(fm, p2_frame);
+            /* if both are no comb, lower is better */
+            if (combs[p1] < fm->combpel && combs[p1] < combs[p2]) {
+                match = p1;
+                av_frame_copy(dstpic, p1_frame);
+            } else if (combs[p2] < fm->combpel) {
                 match = p2;
                 av_frame_copy(dstpic, p2_frame);
             }
@@ -569,11 +576,11 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     }
     if (gen_frame)
         av_frame_free(&gen_frame);
-    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", fnum, combs[0], combs[1], combs[2], match);
+    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", is_second, combs[0], combs[1], combs[2], match);
 
     /* keep the last match value in cycle */
-    fm->last_match[fm->fid + (fm->cycle * fnum)] = match;
-    if (!fnum)
+    fm->last_match[fm->fid + (fm->cycle * is_second)] = match;
+    if (!is_second)
         if (++fm->fid >= fm->cycle)
             fm->fid = 0;
 
