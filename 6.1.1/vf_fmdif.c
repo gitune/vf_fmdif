@@ -563,7 +563,7 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
         if (p2_frame) {
             combs[p2] = calc_combed_score(fm, p2_frame);
             /* if both are no comb, lower is better */
-            if (combs[p1] < fm->combpel && combs[p1] < combs[p2]) {
+            if (combs[p1] < fm->combpel && combs[p1] <= combs[p2]) {
                 match = p1;
                 av_frame_copy(dstpic, p1_frame);
             } else if (combs[p2] < fm->combpel) {
