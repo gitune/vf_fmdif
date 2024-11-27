@@ -31,3 +31,31 @@ ffmpeg-6.1.1/7.0/7.1のsource codeを展開したあと、そのtop directoryに
 ```
 $ patch -p1 -d . < vf_fmdif.patch
 ```
+
+## VMAF値比較
+
+https://bsky.app/profile/digitune.bsky.social/post/3lbwc6kkmbk2p
+```
+Tsunehisa Kazawa
+‪@digitune.bsky.social‬
+合ってるかは分からないけれど、ffmpegでvisual filter適用後のVMAF値を取るには下記のような感じでいけそう↓。
+$ ffmpeg -i INPUT  -filter_complex "[0:v]split[0v][1v];[0v]yadif=1:-1:1[0vf];[0vf][1v]libvmaf=vmaf_v0.6.1.json:log_path=log.xml:n_threads=8" -an -f null -
+
+で、ffmpegで使えるyadif、bwdifに自作のfmdif、fmdif2(bwdifベースのfmdif)を加えて、
+上記の方法でいくつかのサンプルのVMAF値を取ってみた。
+
+yadif, bwdif, fmdif, fmdif2の順で書くと、
+sample1: 87.96, 89.65, 90.56, 90.67
+sample2: 84.82, 87.37, 88.19, 88.43
+sample3: 88.70, 90.28, 91.20, 91.26
+sample4: 75.56, 76.59, 76.11, 76.96
+1～3まではアニメ、4だけ60iな実写ソースです。
+
+元々fieldmatch filterはVMAF値が高くなりがち、という話を聞きますが、確かにベースと
+なったyadif、bwdifより常にfmdif、fmdif2の方が良い値でした。ちょっと嬉しい。
+
+fmdif/fmdif2の良いところは、24p/30p/60iが混在したソースでも何もしなくてもそれなりに
+高品質なprogressive化をしてくれるところ。メンテフリー・チューニングフリーでそれなりに
+満足出来る絵を出力してくれるのはありがたい。
+```
+```
