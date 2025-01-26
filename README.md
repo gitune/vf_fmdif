@@ -58,4 +58,20 @@ fmdif/fmdif2の良いところは、24p/30p/60iが混在したソースでも何
 高品質なprogressive化をしてくれるところ。メンテフリー・チューニングフリーでそれなりに
 満足出来る絵を出力してくれるのはありがたい。
 ```
+
+### (2025/01/26 追記)
+
+前回のVMAF値比較では、上記の通り「60iのソースとそれをvisual filterでdeinterlace+bob化した60pを比較」していて、厳密に言うと比較している両者のformatが異なるため正確に比較出来ているのか若干疑問がありました。そこで以下のように `tinterlace` filterを使うことで60pのソースをinterlace化→それをすぐdeinterlace+bob化する形とすることで比較対象同士のformatを揃え、より確実に比較できるようにしてみました。
+
 ```
+$ ffmpeg -i INPUT(60p) -filter_complex "[0:v]split=2[0v][1v];[0v]tinterlace=4,yadif=1:-1:1[0vf];[0vf][1v]libvmaf=vmaf_v0.6.1.json:log_path=log.xml:n_threads=8" -an -f null -
+```
+
+[Kodi Samples](https://kodi.wiki/view/Samples)からnative 60p(59.94p)と24p(23.976p)の動画をお借りし、後者を60pへ変換(2-3pulldown)してソースを60pに揃えたうえで上記filter chainにより改めてVMAF値を取ってみると、
+
+|sample|yadif|bwdif|fmdif|fmdif2|
+|----|----|----|----|----|
+|24p|94.56|96.87|96.29|97.17|
+|60p|91.86|95.85|90.70|93.12|
+
+となりました。元が24pで60iへ変換されたsampleは順当にfieldmatch効果でVMAP値が上昇した半面、native 60pのsampleではfmdif/fmdif2のそれぞれ元となったdeinterlace filter、yadif/bwdifよりも結果が悪化しています。これはおそらく櫛検出のミスで、本当はmatchさせてはいけないfield同士をmatchさせてしまいartifactが発生しているcaseがあるから、でしょう。元が60pなソースであることが分かっているのであればどのfieldもmatchさせずにdeinterlace filterへ任せるのが正解ですが、櫛検出を「(interlaceの結果生じた)櫛と思わしきパターンがある」というパターンマッチの強度に頼っているため、櫛の発生が少ない場面では誤ってfield matchさせてしまうことがあるのですね。
