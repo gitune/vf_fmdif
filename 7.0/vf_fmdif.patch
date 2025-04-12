@@ -912,8 +912,8 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif.c ffmpeg-7.1.mod/libavfilter/vf_fmdif.
 +};
 diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif2.c
 --- ffmpeg-7.1/libavfilter/vf_fmdif2.c	1970-01-01 09:00:00.000000000 +0900
-+++ ffmpeg-7.1.mod/libavfilter/vf_fmdif2.c	2024-11-26 13:48:47.198928152 +0900
-@@ -0,0 +1,647 @@
++++ ffmpeg-7.1.mod/libavfilter/vf_fmdif2.c	2025-04-09 14:23:19.362290816 +0900
+@@ -0,0 +1,669 @@
 +/*
 + * Field Match Deinterlacing Filter
 + * Copyright (C) 2024 Tsunehisa Kazawa <digitune+ffmpeg@gmail.com>
@@ -974,6 +974,9 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    int bpc;                        ///< bytes per component
 +    int *last_match;                ///< last values of match
 +    int fid;                        ///< current frame id
++    int cur_combed_score;           ///< comb score of current frame
++    AVFrame *weaved_frame;          ///< weaved frame with prev/next
++    int wf_combed_score;            ///< comb score of weaved frame
 +
 +    /* options */
 +    int cthresh;
@@ -1321,21 +1324,40 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    YADIFContext *yadif = &bwdif->yadif;
 +    ThreadData td = { .frame = dstpic, .parity = parity, .tff = tff };
 +    int combs[] = { -1, -1, -1 };
-+    AVFrame *gen_frame = NULL;
 +    AVFrame *p1_frame;
 +    AVFrame *p2_frame;
-+    int i, match = -1, p1, p2;
++    int i, match = -1, p1, p2, *last_match;
 +    int is_second = parity ^ !tff;
 +
++    /* prepare weaved frame and calc combed score */
++    if (is_second) {
++        if (fm->weaved_frame)
++            av_frame_free(&fm->weaved_frame);
++        fm->weaved_frame = create_weave_frame(ctx, mN, tff, yadif->prev, yadif->cur, yadif->next);
++        if (fm->weaved_frame)
++            combs[mN] = fm->wf_combed_score = calc_combed_score(fm, fm->weaved_frame);
++        combs[mC] = fm->cur_combed_score;
++    } else {
++        if (!fm->weaved_frame) {
++            fm->weaved_frame = create_weave_frame(ctx, mP, tff, yadif->prev, yadif->cur, yadif->next);
++            if (fm->weaved_frame)
++                combs[mP] = calc_combed_score(fm, fm->weaved_frame);
++        } else {
++            combs[mP] = fm->wf_combed_score;
++        }
++        combs[mC] = fm->cur_combed_score = calc_combed_score(fm, yadif->cur);
++    }
++
 +    /* the last matched frame is priority */
-+    switch (fm->last_match[fm->fid + (fm->cycle * is_second)]) {
++    last_match = &fm->last_match[fm->fid + (fm->cycle * is_second)];
++    switch (*last_match) {
 +    case mP:
 +    case mN:
 +        p1 = is_second ? mN : mP;
 +        p2 = mC;
-+        p1_frame = gen_frame = create_weave_frame(ctx, p1, tff, yadif->prev, yadif->cur, yadif->next);
++        p1_frame = fm->weaved_frame;
 +        p2_frame = yadif->cur;
-+        if (gen_frame)
++        if (p1_frame)
 +            break;
 +        /* continue if failing create weave frame */
 +    case mC:
@@ -1343,37 +1365,33 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +        p1 = mC;
 +        p2 = is_second ? mN : mP;
 +        p1_frame = yadif->cur;
-+        p2_frame = NULL;
++        p2_frame = fm->weaved_frame;
 +        break;
 +    }
 +
-+    /* calc combed scores */
-+    combs[p1] = calc_combed_score(fm, p1_frame);
-+    if (combs[p1] < fm->combpel && fm->last_match[fm->fid + (fm->cycle * is_second)] >= 0) {
++    /* evaluate combed scores */
++    if (combs[p1] < fm->combpel && *last_match >= 0) {
 +        match = p1;
 +        av_frame_copy(dstpic, p1_frame);
 +    } else {
-+        if (!p2_frame)
-+            p2_frame = gen_frame = create_weave_frame(ctx, p2, tff, yadif->prev, yadif->cur, yadif->next);
 +        if (p2_frame) {
-+            combs[p2] = calc_combed_score(fm, p2_frame);
++            /* if the last is unmatched, combpel should be half */
++            int combpel = fm->combpel / (*last_match < 0 ? 2 : 1);
 +            /* if both are no comb, lower is better */
-+            if (combs[p1] < fm->combpel && combs[p1] <= combs[p2]) {
++            if (combs[p1] < combpel && combs[p1] <= combs[p2]) {
 +                match = p1;
 +                av_frame_copy(dstpic, p1_frame);
-+            } else if (combs[p2] < fm->combpel) {
++            } else if (combs[p2] < combpel) {
 +                match = p2;
 +                av_frame_copy(dstpic, p2_frame);
 +            }
 +        } else
 +            av_log(ctx, AV_LOG_WARNING, "Cannot create weave frame. skipped to match fields\n");
 +    }
-+    if (gen_frame)
-+        av_frame_free(&gen_frame);
 +    av_log(ctx, AV_LOG_DEBUG, "COMBS(%d): %3d %3d %3d:match=%d\n", is_second, combs[0], combs[1], combs[2], match);
 +
 +    /* keep the last match value in cycle */
-+    fm->last_match[fm->fid + (fm->cycle * is_second)] = match;
++    *last_match = match;
 +    if (!is_second)
 +        if (++fm->fid >= fm->cycle)
 +            fm->fid = 0;
@@ -1413,6 +1431,8 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    av_frame_free(&yadif->next);
 +    ff_ccfifo_uninit(&yadif->cc_fifo);
 +
++    if (fm->weaved_frame)
++        av_frame_free(&fm->weaved_frame);
 +    av_freep(&fm->last_match);
 +    av_freep(&fm->cmask_data[0]);
 +    av_freep(&fm->c_array);
@@ -1491,6 +1511,9 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    fm->last_match   = av_malloc_array(fm->cycle * 2, sizeof(int));
 +    for (i = 0; i < fm->cycle * 2; i++)
 +        fm->last_match[i] = -1;
++    fm->cur_combed_score = 0;
++    fm->weaved_frame = NULL;
++    fm->wf_combed_score = 0;
 +
 +#if ARCH_X86
 +    ff_yadif_init_x86(s);
@@ -1519,13 +1542,12 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    CONST("all",        "deinterlace all frames",                       YADIF_DEINT_ALL,        "deint"),
 +    CONST("interlaced", "only deinterlace frames marked as interlaced", YADIF_DEINT_INTERLACED, "deint"),
 +
-+    { "cthresh", "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF2(cthresh), AV_OPT_TYPE_INT, {.i64=10}, -1, 0xff, FLAGS },
-+    { "chroma",  "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF2(chroma),  AV_OPT_TYPE_BOOL,{.i64= 1},  0,    1, FLAGS },
-+    { "blockx",  "set the x-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blockx),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
-+    { "blocky",  "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blocky),  AV_OPT_TYPE_INT, {.i64=32},  4, 1<<9, FLAGS },
-+    { "combpel", "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF2(combpel), AV_OPT_TYPE_INT, {.i64=160}, 0, INT_MAX, FLAGS },
-+
-+    { "cycle",   "Set the number of frames you want to keep the rhythm", OFFSET_FMDIF2(cycle), AV_OPT_TYPE_INT, {.i64 = 5}, 2, 25, FLAGS },
++    { "cthresh",  "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF2(cthresh), AV_OPT_TYPE_INT, {.i64= 9}, -1, 0xff, FLAGS },
++    { "chroma",   "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF2(chroma),  AV_OPT_TYPE_BOOL,{.i64= 1},  0,    1, FLAGS },
++    { "blockx",   "set the x-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blockx),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
++    { "blocky",   "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blocky),  AV_OPT_TYPE_INT, {.i64=32},  4, 1<<9, FLAGS },
++    { "combpel",  "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF2(combpel), AV_OPT_TYPE_INT, {.i64=200}, 0, INT_MAX, FLAGS },
++    { "cycle",    "set the number of frames you want to keep the rhythm", OFFSET_FMDIF2(cycle), AV_OPT_TYPE_INT, {.i64 = 5}, 2, 25, FLAGS },
 +
 +    { NULL }
 +};
