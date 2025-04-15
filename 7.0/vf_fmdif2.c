@@ -479,6 +479,14 @@ static void filter(AVFilterContext *ctx, AVFrame *dstpic,
     if (!is_second)
         if (++fm->fid >= fm->cycle)
             fm->fid = 0;
+    
+    /* free the weaved frame if needed */
+    if (!is_second) {
+        if (fm->weaved_frame) {
+            av_frame_free(&fm->weaved_frame);
+            fm->weaved_frame = NULL;
+        }
+    }
 
     if (match >= 0) /* found matched field */
         return;
