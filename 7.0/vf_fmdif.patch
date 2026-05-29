@@ -1549,10 +1549,10 @@ diff -Nru ffmpeg-7.1/libavfilter/vf_fmdif2.c ffmpeg-7.1.mod/libavfilter/vf_fmdif
 +    CONST("interlaced", "only deinterlace frames marked as interlaced", YADIF_DEINT_INTERLACED, "deint"),
 +
 +    { "cthresh",  "set the area combing threshold used for combed frame detection",       OFFSET_FMDIF2(cthresh), AV_OPT_TYPE_INT, {.i64= 9}, -1, 0xff, FLAGS },
-+    { "chroma",   "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF2(chroma),  AV_OPT_TYPE_BOOL,{.i64= 1},  0,    1, FLAGS },
++    { "chroma",   "set whether or not chroma is considered in the combed frame decision", OFFSET_FMDIF2(chroma),  AV_OPT_TYPE_BOOL,{.i64= 0},  0,    1, FLAGS },
 +    { "blockx",   "set the x-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blockx),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
-+    { "blocky",   "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blocky),  AV_OPT_TYPE_INT, {.i64=32},  4, 1<<9, FLAGS },
-+    { "combpel",  "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF2(combpel), AV_OPT_TYPE_INT, {.i64=200}, 0, INT_MAX, FLAGS },
++    { "blocky",   "set the y-axis size of the window used during combed frame detection", OFFSET_FMDIF2(blocky),  AV_OPT_TYPE_INT, {.i64=16},  4, 1<<9, FLAGS },
++    { "combpel",  "set the number of combed pixels inside any of the blocky by blockx size blocks on the frame for the frame to be detected as combed", OFFSET_FMDIF2(combpel), AV_OPT_TYPE_INT, {.i64=100}, 0, INT_MAX, FLAGS },
 +    { "cycle",    "set the number of frames you want to keep the rhythm", OFFSET_FMDIF2(cycle), AV_OPT_TYPE_INT, {.i64 = 5}, 2, 25, FLAGS },
 +
 +    { NULL }
