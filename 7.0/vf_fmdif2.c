@@ -628,7 +628,7 @@ static const AVOption fmdif2_options[] = {
     CONST("bff",  "assume bottom field first", YADIF_PARITY_BFF,  "parity"),
     CONST("auto", "auto detect parity",        YADIF_PARITY_AUTO, "parity"),
 
-    { "deint", "specify which frames to deinterlace", OFFSET(deint), AV_OPT_TYPE_INT, {.i64=YADIF_DEINT_ALL}, 0, 1, FLAGS, .unit = "deint" },
+    { "deint", "specify which frames to deinterlace", OFFSET(deint), AV_OPT_TYPE_INT, {.i64=YADIF_DEINT_INTERLACED}, 0, 1, FLAGS, .unit = "deint" },
     CONST("all",        "deinterlace all frames",                       YADIF_DEINT_ALL,        "deint"),
     CONST("interlaced", "only deinterlace frames marked as interlaced", YADIF_DEINT_INTERLACED, "deint"),
 
