@@ -22,7 +22,7 @@ cycle(defaultは5フレーム)毎にmP/mC/mNどの組み合わせを使ったか
 
 ## オプション
 
-利用出来るオプションはyadif/bwdifのそれとfieldmatchの櫛検出用の一部(cthresh, chroma, blockx, blocky, combpel)です。default値はblockx以外は全て変更し、cthreshは10に、chromaは1、blockyは32、combpelは160としています。また、リズムを保ちたいフレーム数を指定するcycle(defaultは5フレーム)も指定可能です。
+利用出来るオプションはyadif/bwdifのそれとfieldmatchの櫛検出用の一部(cthresh, chroma, blockx, blocky, combpel)です。default値はfmdifではblockx以外は全て変更し、cthreshは10に、chromaは1、blockyは32、combpelは160としていましたが、最近もっぱら使っているfmdif2ではほぼfieldmatchのdefaultに戻し、唯一combpelのみ80→100に上げています。また、リズムを保ちたいフレーム数を指定するcycle(defaultは5フレーム)も指定可能です。
 
 ## 使い方
 
